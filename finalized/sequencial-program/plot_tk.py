@@ -10,7 +10,7 @@ from mpl_toolkits.mplot3d import Axes3D
 # Parameters (should match C program)
 Nx = 50
 Ny = 50
-max_time_step = 100  # Same as steps in your simulation
+max_time_step = 100000  # Same as steps in your simulation
 output_folder = "output"
 
 # Load CSV for a given time step
