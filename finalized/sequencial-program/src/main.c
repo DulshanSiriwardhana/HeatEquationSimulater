@@ -42,9 +42,9 @@ void save_all_data_as_csv(const char *folder, double *all_data, int Nx, int Ny, 
 }
 
 int main() {
-    const int Nx = 50;
-    const int Ny = 50;
-    const int steps = 100000;
+    const int Nx = 500;
+    const int Ny = 500;
+    const int steps = 1000;
 
     const double dx = 1.0;
     const double dy = 1.0;
