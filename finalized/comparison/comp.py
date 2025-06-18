@@ -1,6 +1,6 @@
 import os
 import numpy as np
-final = 1000
+final = 100
 
 def getFile(output_folder):
     filename = os.path.join(output_folder, f"solution_t{final:04d}.csv")

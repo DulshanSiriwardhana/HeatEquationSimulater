@@ -42,13 +42,13 @@ void save_all_data_as_csv(const char *folder, double *all_data, int Nx, int Ny, 
 }
 
 int main() {
-    const int Nx = 500;
-    const int Ny = 500;
-    const int steps = 1000;
+    const int Nx = 1000;
+    const int Ny = 1000;
+    const int steps = 100;
 
     const double dx = 1.0;
     const double dy = 1.0;
-    const double dt = 1;
+    const double dt = 30;
     const double alpha = 0.01;
 
     const char *output_folder = "output";
@@ -82,7 +82,12 @@ int main() {
     double elapsed = (double)(end - start) / CLOCKS_PER_SEC;
     printf("Simulation completed in %.2f seconds.\n", elapsed);
 
+    clock_t start2 = clock();
     save_all_data_as_csv(output_folder, all_data, Nx, Ny, steps);
+    clock_t end2 = clock();
+    double elapsed2 = (double)(end2 - start2) / CLOCKS_PER_SEC;
+    printf("CSV save completed in %.4f seconds\n", elapsed2);
+    printf("Total Time spent: %.4f seconds.\n", elapsed+elapsed2);
 
     free(u);
     free(u_new);

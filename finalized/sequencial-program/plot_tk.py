@@ -1,16 +1,14 @@
 import matplotlib
-matplotlib.use('TkAgg')  # Use Tkinter backend for interactive plots
-
+matplotlib.use('TkAgg')
 import os
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.widgets import Slider
 from mpl_toolkits.mplot3d import Axes3D
 
-# Parameters (should match C program)
-Nx = 500
-Ny = 500
-max_time_step = 1000  # Same as steps in your simulation
+Nx = 1000
+Ny = 1000
+max_time_step = 100
 output_folder = "output"
 
 # Load CSV for a given time step
