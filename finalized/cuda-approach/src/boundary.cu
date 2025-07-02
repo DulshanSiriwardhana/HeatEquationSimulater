@@ -1,6 +1,12 @@
 #include "../include/boundary.h"
 #include <cuda_runtime.h>
+#include <stddef.h>
 
+/**
+ * @brief CUDA kernel to apply boundary conditions to the grid.
+ *
+ * This implementation copies the values from the adjacent interior cells to the boundaries.
+ */
 __global__ void apply_boundary_kernel(double *u, int Nx, int Ny) {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
     
@@ -19,7 +25,11 @@ __global__ void apply_boundary_kernel(double *u, int Nx, int Ny) {
     }
 }
 
+/**
+ * @brief Apply boundary conditions to the grid on the device (CUDA).
+ */
 void apply_boundary_conditions_cuda(double *d_u, int Nx, int Ny, double boundary_temp) {
+    if (!d_u || Nx < 2 || Ny < 2) return;
     int max_dim = (Nx > Ny) ? Nx : Ny;
     int threads_per_block = 256;
     int blocks = (max_dim + threads_per_block - 1) / threads_per_block;

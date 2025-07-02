@@ -1,11 +1,18 @@
 #include "solver.h"
+#include <stddef.h>
 #include <omp.h>
 
+/**
+ * @brief Advance the solution by one time step using the finite difference method (OpenMP parallelized).
+ *
+ * Computes the next time step for the heat equation on a 2D grid.
+ */
 void advance_time_step(const double *u, double *u_new, int Nx, int Ny,
                        double dx, double dy, double dt, double alpha) {
+    if (!u || !u_new || Nx < 2 || Ny < 2) return;
     double rdx2 = alpha * dt / (dx * dx);
     double rdy2 = alpha * dt / (dy * dy);
-
+    // Update interior points
     #pragma omp parallel for collapse(2) schedule(static)
     for (int j = 1; j < Ny - 1; j++) {
         for (int i = 1; i < Nx - 1; i++) {
@@ -15,12 +22,11 @@ void advance_time_step(const double *u, double *u_new, int Nx, int Ny,
             double u_right = u[j * Nx + (i + 1)];
             double u_up = u[(j - 1) * Nx + i];
             double u_down = u[(j + 1) * Nx + i];
-
             u_new[idx] = u_center + rdx2 * (u_left - 2 * u_center + u_right)
                                    + rdy2 * (u_up - 2 * u_center + u_down);
         }
     }
-
+    // Copy boundaries
     #pragma omp parallel for
     for (int i = 0; i < Nx; i++) {
         u_new[i] = u[i];

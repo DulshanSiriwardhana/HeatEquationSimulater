@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <errno.h>
 #include <omp.h>
 
 #include "boundary.h"
@@ -9,76 +10,72 @@
 #include "solver.h"
 #include "export.h"
 
-void create_folder_if_not_exists(const char *folder) {
+#define DEFAULT_NX 1000
+#define DEFAULT_NY 1000
+#define DEFAULT_STEPS 100
+#define DEFAULT_DX 1.0
+#define DEFAULT_DY 1.0
+#define DEFAULT_DT 30.0
+#define DEFAULT_ALPHA 0.01
+#define DEFAULT_OUTPUT_FOLDER "output"
+
+/**
+ * @brief Create a folder if it does not exist.
+ */
+static void create_folder_if_not_exists(const char *folder) {
 #ifdef _WIN32
     _mkdir(folder);
 #else
     struct stat st = {0};
     if (stat(folder, &st) == -1) {
-        mkdir(folder, 0777);
+        if (mkdir(folder, 0777) != 0 && errno != EEXIST) {
+            fprintf(stderr, "Failed to create output directory: %s\n", folder);
+            exit(EXIT_FAILURE);
+        }
     }
 #endif
 }
 
-double save_all_data_as_csv(const char *folder, double *all_data, int Nx, int Ny, int steps) {
-    char filename[256];
-    double start_time = omp_get_wtime();
-
-    #pragma omp parallel for private(filename)
-    for (int t = 0; t <= steps; t++) {
-        char local_filename[256];
-        snprintf(local_filename, sizeof(local_filename), "%s/solution_t%04d.csv", folder, t);
-        
-        FILE *fp = fopen(local_filename, "w");
-        if (!fp) {
-            #pragma omp critical
-            {
-                fprintf(stderr, "Error opening file %s\n", local_filename);
-            }
-            continue;
-        }
-
-        for (int j = 0; j < Ny; j++) {
-            for (int i = 0; i < Nx; i++) {
-                int index = t * Nx * Ny + j * Nx + i;
-                fprintf(fp, "%.5f", all_data[index]);
-                if (i < Nx - 1) fprintf(fp, ",");
-            }
-            fprintf(fp, "\n");
-        }
-        fclose(fp);
-    }
-
-    double end_time = omp_get_wtime();
-    printf("CSV save completed in %.6f seconds using OpenMP\n", end_time - start_time);
-    return end_time - start_time;
+/**
+ * @brief Print usage instructions.
+ */
+static void print_usage(const char *progname) {
+    printf("Usage: %s [Nx Ny steps dx dy dt alpha output_folder]\n", progname);
+    printf("Defaults: Nx=%d Ny=%d steps=%d dx=%.1f dy=%.1f dt=%.1f alpha=%.2f output_folder=%s\n",
+           DEFAULT_NX, DEFAULT_NY, DEFAULT_STEPS, DEFAULT_DX, DEFAULT_DY, DEFAULT_DT, DEFAULT_ALPHA, DEFAULT_OUTPUT_FOLDER);
 }
 
+int main(int argc, char *argv[]) {
+    // Parse command-line arguments
+    int Nx = DEFAULT_NX, Ny = DEFAULT_NY, steps = DEFAULT_STEPS;
+    double dx = DEFAULT_DX, dy = DEFAULT_DY, dt = DEFAULT_DT, alpha = DEFAULT_ALPHA;
+    const char *output_folder = DEFAULT_OUTPUT_FOLDER;
+    if (argc > 1) Nx = atoi(argv[1]);
+    if (argc > 2) Ny = atoi(argv[2]);
+    if (argc > 3) steps = atoi(argv[3]);
+    if (argc > 4) dx = atof(argv[4]);
+    if (argc > 5) dy = atof(argv[5]);
+    if (argc > 6) dt = atof(argv[6]);
+    if (argc > 7) alpha = atof(argv[7]);
+    if (argc > 8) output_folder = argv[8];
+    if (argc > 1 && (strcmp(argv[1], "-h") == 0 || strcmp(argv[1], "--help") == 0)) {
+        print_usage(argv[0]);
+        return 0;
+    }
+    if (Nx < 2 || Ny < 2 || steps < 1 || dx <= 0 || dy <= 0 || dt <= 0 || alpha <= 0) {
+        fprintf(stderr, "Invalid parameters.\n");
+        print_usage(argv[0]);
+        return EXIT_FAILURE;
+    }
 
-
-int main() {
-    const int Nx = 1000;
-    const int Ny = 1000;
-    const int steps = 100;
-
-    const double dx = 1.0;
-    const double dy = 1.0;
-    const double dt = 30;
-    const double alpha = 0.01;
-
-    const char *output_folder = "output";
     create_folder_if_not_exists(output_folder);
-
-    //const char *output_folder = "output";
-    //create_folder_if_not_exists(output_folder);
 
     int N = Nx * Ny;
     double *u = calloc(N, sizeof(double));
     double *u_new = calloc(N, sizeof(double));
-    double *all_data = calloc((steps + 1) * N, sizeof(double));
-
-    if (!u || !u_new || !all_data) {
-        fprintf(stderr, "Memory allocation failed\n");
+    if (!u || !u_new) {
+        fprintf(stderr, "Memory allocation failed.\n");
+        free(u); free(u_new);
         return EXIT_FAILURE;
     }
 
@@ -86,26 +83,16 @@ int main() {
     apply_boundary_conditions(u, Nx, Ny, 0.0);
 
     double start = omp_get_wtime();
-
     for (int t = 0; t <= steps; t++) {
-        //export_to_csv(output_folder, u, Nx, Ny, t);
-        memcpy(&all_data[t * N], u, N * sizeof(double));
+        export_to_csv(output_folder, u, Nx, Ny, t);
         advance_time_step(u, u_new, Nx, Ny, dx, dy, dt, alpha);
-        double *temp = u;
-        u = u_new;
-        u_new = temp;
+        double *temp = u; u = u_new; u_new = temp;
     }
-
     double end = omp_get_wtime();
     double elapsed = end - start;
-    printf("Calculation completed in %.4f seconds.\n", elapsed);
-    double filesavingtime = save_all_data_as_csv(output_folder, all_data, Nx, Ny, steps);
-
-    printf("Total Time spent: %.4f seconds.\n", elapsed+filesavingtime);
+    printf("Simulation and export completed in %.2f seconds.\n", elapsed);
 
     free(u);
     free(u_new);
-    free(all_data);
-
     return 0;
 }

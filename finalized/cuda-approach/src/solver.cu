@@ -1,6 +1,10 @@
 #include "../include/solver.h"
 #include <cuda_runtime.h>
+#include <stddef.h>
 
+/**
+ * @brief CUDA kernel to advance the solution by one time step using the finite difference method.
+ */
 __global__ void advance_time_step_kernel(const double *u, double *u_new, int Nx, int Ny,
                                          double rdx2, double rdy2) {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
@@ -21,6 +25,9 @@ __global__ void advance_time_step_kernel(const double *u, double *u_new, int Nx,
     }
 }
 
+/**
+ * @brief CUDA kernel to copy boundary values.
+ */
 __global__ void copy_boundaries_kernel(const double *u, double *u_new, int Nx, int Ny) {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
     
@@ -37,8 +44,12 @@ __global__ void copy_boundaries_kernel(const double *u, double *u_new, int Nx, i
     }
 }
 
+/**
+ * @brief Advance the solution by one time step using the finite difference method (CUDA).
+ */
 void advance_time_step_cuda(double *d_u, double *d_u_new, int Nx, int Ny,
                            double dx, double dy, double dt, double alpha) {
+    if (!d_u || !d_u_new || Nx < 2 || Ny < 2) return;
     double rdx2 = alpha * dt / (dx * dx);
     double rdy2 = alpha * dt / (dy * dy);
     
